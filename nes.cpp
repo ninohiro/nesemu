@@ -1,6 +1,9 @@
 #include "nes.h"
-NES::NES(INES ines,Uint32 *pixels):cpu{},ppu{},ines{ines},pixels{pixels}{
-    cpu.PC=0x8000;
+NES::NES(INES ines,uint32_t *pixels):cpu{},ppu{},ines{ines},pixels{pixels}{
+    cpu.S=0xFD;
+    unsigned short a1=load_cpu_mem(0xFFFC)+load_cpu_mem(0xFFFD)*256;
+    cpu.PC=a1;
+    cpu.P=32|4;
 }
 
 unsigned char NES::load_cpu_mem(unsigned short addr){
@@ -41,6 +44,9 @@ void NES::step_cpu(){
         return;
     }
     unsigned char c=load_cpu_mem(cpu.PC);
+    if(pin_irq){
+    }
+    pin_irq=0;
     unsigned short a1,a2;
     unsigned char v1,v2;
     switch(c){
@@ -1055,21 +1061,21 @@ void NES::step_cpu(){
         cpu.wait=3;
         break;
     case 0x08:
-        store_cpu_mem(cpu.S,cpu.P);
+        store_cpu_mem(cpu.S,cpu.P|16);
         cpu.S--;
         cpu.PC+=1;
         cpu.wait=3;
         break;
 
     case 0x68:
-        cpu.A=load_cpu_mem(cpu.S);
+        cpu.A=load_cpu_mem(cpu.S+1);
         cpu.S++;
         cpu.P=(~(128|2)&cpu.P)|(cpu.A&128)|(2*(cpu.A==0));
         cpu.PC+=1;
         cpu.wait=4;
         break;
     case 0x28:
-        cpu.P=load_cpu_mem(cpu.S);
+        cpu.P=(~16)&load_cpu_mem(cpu.S+1);
         cpu.S++;
         cpu.PC+=1;
         cpu.wait=4;
@@ -1089,7 +1095,7 @@ void NES::step_cpu(){
 
     case 0x20:
         a1=load_cpu_mem(cpu.PC+1)+load_cpu_mem(cpu.PC+2)*256;
-        a2=cpu.PC+3;
+        a2=cpu.PC+2;
         store_cpu_mem(cpu.S-1,(unsigned char)a2);
         store_cpu_mem(cpu.S,(unsigned char)(a2>>8));
         cpu.S-=2;
@@ -1097,20 +1103,144 @@ void NES::step_cpu(){
         cpu.wait=6;
         break;
     case 0x60:
-        a1=load_cpu_mem(cpu.S+1)+load_cpu_mem(cpu.S+2)*256;
+        a1=load_cpu_mem(cpu.S+1)+load_cpu_mem(cpu.S+2)*256+1;
         cpu.S+=2;
         cpu.PC=a1;
         cpu.wait=6;
         break;
-    
     case 0x40:
-        cpu.P=load_cpu_mem(cpu.S+1);
+        cpu.P=(~16)&load_cpu_mem(cpu.S+1);
         cpu.S++;
         a1=load_cpu_mem(cpu.S+1)+load_cpu_mem(cpu.S+2)*256;
         cpu.S+=2;
         cpu.PC=a1;
         cpu.wait=6;
         break;
+
+    case 0x90:
+        a1=cpu.PC+(char)load_cpu_mem(cpu.PC+1);
+        if(cpu.P&1==0){
+            cpu.PC=a1;
+        }
+        else{
+            cpu.PC+=2;
+        }
+        cpu.wait=2;
+        break;
+    case 0xB0:
+        a1=cpu.PC+(char)load_cpu_mem(cpu.PC+1);
+        if(cpu.P&1==1){
+            cpu.PC=a1;
+        }
+        else{
+            cpu.PC+=2;
+        }
+        cpu.wait=2;
+        break;
+    case 0xF0:
+        a1=cpu.PC+(char)load_cpu_mem(cpu.PC+1);
+        if((cpu.P&2)>>1==1){
+            cpu.PC=a1;
+        }
+        else{
+            cpu.PC+=2;
+        }
+        cpu.wait=2;
+        break;
+    case 0x30:
+        a1=cpu.PC+(char)load_cpu_mem(cpu.PC+1);
+        if((cpu.P&128)>>7==1){
+            cpu.PC=a1;
+        }
+        else{
+            cpu.PC+=2;
+        }
+        cpu.wait=2;
+        break;
+    case 0xD0:
+        a1=cpu.PC+(char)load_cpu_mem(cpu.PC+1);
+        if((cpu.P&2)>>1==0){
+            cpu.PC=a1;
+        }
+        else{
+            cpu.PC+=2;
+        }
+        cpu.wait=2;
+        break;
+    case 0x10:
+        a1=cpu.PC+(char)load_cpu_mem(cpu.PC+1);
+        if((cpu.P&128)>>7==0){
+            cpu.PC=a1;
+        }
+        else{
+            cpu.PC+=2;
+        }
+        cpu.wait=2;
+        break;
+    case 0x50:
+        a1=cpu.PC+(char)load_cpu_mem(cpu.PC+1);
+        if((cpu.P&64)>>6==0){
+            cpu.PC=a1;
+        }
+        else{
+            cpu.PC+=2;
+        }
+        cpu.wait=2;
+        break;
+    case 0x70:
+        a1=cpu.PC+(char)load_cpu_mem(cpu.PC+1);
+        if((cpu.P&64)>>6==1){
+            cpu.PC=a1;
+        }
+        else{
+            cpu.PC+=2;
+        }
+        cpu.wait=2;
+        break;
+
+    case 0x18:
+        cpu.P=(~(1)&cpu.P);
+        cpu.PC+=1;
+        cpu.wait=2;
+        break;
+    case 0x58:
+        cpu.P=(~(4)&cpu.P);
+        cpu.PC+=1;
+        cpu.wait=2;
+        break;
+    case 0xB8:
+        cpu.P=(~(64)&cpu.P);
+        cpu.PC+=1;
+        cpu.wait=2;
+        break;
+    case 0x38:
+        cpu.P=(~(1)&cpu.P)|1;
+        cpu.PC+=1;
+        cpu.wait=2;
+        break;
+    case 0x78:
+        cpu.P=(~(4)&cpu.P)|4;
+        cpu.PC+=1;
+        cpu.wait=2;
+        break;
+
+    case 0x00:
+        a1=cpu.PC+2;
+        store_cpu_mem(cpu.S-1,(unsigned char)a1);
+        store_cpu_mem(cpu.S,(unsigned char)(a1>>8));
+        cpu.S-=2;
+        store_cpu_mem(cpu.S,cpu.P|16);
+        cpu.S--;
+        a2=load_cpu_mem(0xFFFE)+load_cpu_mem(0xFFFF)*256;
+        cpu.PC=a2;
+        cpu.wait=7;
+        break;
+    case 0xEA:
+        cpu.PC+=1;
+        cpu.wait=2;
+        break;
+    default:
+        throw "Unknown instruction";
     }
     cpu.wait--;
 }

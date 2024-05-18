@@ -1,5 +1,5 @@
-#include <SDL2/SDL.h>
 #include "ines.h"
+#include <cstdlib>
 struct CPU{
     unsigned char ram[2048];
     unsigned char A;
@@ -18,9 +18,12 @@ class NES{
     PPU ppu;
     INES ines;
     unsigned char io[32];
-    Uint32 *pixels;
+    unsigned char pin_irq;
+    unsigned char pin_nmi;
+    unsigned char pin_reset;
+    uint32_t *pixels;
 public:
-    NES(INES ines,Uint32 *pixels);
+    NES(INES ines,uint32_t *pixels);
     void step_cpu();
     void step_ppu();
     unsigned char load_cpu_mem(unsigned short addr);

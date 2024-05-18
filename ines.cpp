@@ -5,13 +5,16 @@
 #include <iterator>
 #include "ines.h"
 INES read_rom(const std::string &s){
-    INES ines;
-    std::basic_ifstream<unsigned char> ifs(s,std::ios_base::in|std::ios_base::binary);
-    std::istreambuf_iterator<unsigned char> it(ifs);
-    std::istreambuf_iterator<unsigned char> last;
-    std::vector<unsigned char> rom(it, last);
-    ines.prg_size=rom[4];
-    ines.chr_size=rom[5];
+    INES ines{};
+    std::basic_ifstream<char> ifs(s,std::ios_base::in|std::ios_base::binary);
+    if(!ifs){
+        return ines;
+    }
+    std::istreambuf_iterator<char> it(ifs);
+    std::istreambuf_iterator<char> last;
+    std::vector<char> rom(it, last);
+    ines.prg_size=(unsigned char)rom[4];
+    ines.chr_size=(unsigned char)rom[5];
     ines.prg.resize(ines.prg_size*16384);
     ines.chr.resize(ines.chr_size*8192);
     int n=16;

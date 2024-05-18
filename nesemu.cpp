@@ -16,7 +16,7 @@ int main()
     Uint32 pixel_format_enum=SDL_GetWindowPixelFormat(window);
     SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormat(0,256,240,32,pixel_format_enum);
     SDL_PixelFormat *pixel_format=SDL_AllocFormat(pixel_format_enum);
-    Uint32 *pixels=(Uint32*)surface->pixels;
+    uint32_t *pixels=(uint32_t*)surface->pixels;
     for(int i=0;i<240;i++){
         for(int j=0;j<256;j++){
             pixels[i*256+j]=SDL_MapRGBA(pixel_format,j,i,0,0);
