@@ -1119,83 +1119,123 @@ void NES::step_cpu(){
 
     case 0x90:
         a1=cpu.PC+(char)load_cpu_mem(cpu.PC+1);
+        if(a1>>8!=(cpu.PC+2)>>8){
+            cpu.wait=3;
+        }
+        else{
+            cpu.wait=2;
+        }
         if(cpu.P&1==0){
             cpu.PC=a1;
         }
         else{
             cpu.PC+=2;
         }
-        cpu.wait=2;
         break;
     case 0xB0:
         a1=cpu.PC+(char)load_cpu_mem(cpu.PC+1);
+        if(a1>>8!=(cpu.PC+2)>>8){
+            cpu.wait=3;
+        }
+        else{
+            cpu.wait=2;
+        }
         if(cpu.P&1==1){
             cpu.PC=a1;
         }
         else{
             cpu.PC+=2;
         }
-        cpu.wait=2;
         break;
     case 0xF0:
         a1=cpu.PC+(char)load_cpu_mem(cpu.PC+1);
+        if(a1>>8!=(cpu.PC+2)>>8){
+            cpu.wait=3;
+        }
+        else{
+            cpu.wait=2;
+        }
         if((cpu.P&2)>>1==1){
             cpu.PC=a1;
         }
         else{
             cpu.PC+=2;
         }
-        cpu.wait=2;
         break;
     case 0x30:
         a1=cpu.PC+(char)load_cpu_mem(cpu.PC+1);
+        if(a1>>8!=(cpu.PC+2)>>8){
+            cpu.wait=3;
+        }
+        else{
+            cpu.wait=2;
+        }
         if((cpu.P&128)>>7==1){
             cpu.PC=a1;
         }
         else{
             cpu.PC+=2;
         }
-        cpu.wait=2;
         break;
     case 0xD0:
         a1=cpu.PC+(char)load_cpu_mem(cpu.PC+1);
+        if(a1>>8!=(cpu.PC+2)>>8){
+            cpu.wait=3;
+        }
+        else{
+            cpu.wait=2;
+        }
         if((cpu.P&2)>>1==0){
             cpu.PC=a1;
         }
         else{
             cpu.PC+=2;
         }
-        cpu.wait=2;
         break;
     case 0x10:
         a1=cpu.PC+(char)load_cpu_mem(cpu.PC+1);
+        if(a1>>8!=(cpu.PC+2)>>8){
+            cpu.wait=3;
+        }
+        else{
+            cpu.wait=2;
+        }
         if((cpu.P&128)>>7==0){
             cpu.PC=a1;
         }
         else{
             cpu.PC+=2;
         }
-        cpu.wait=2;
         break;
     case 0x50:
         a1=cpu.PC+(char)load_cpu_mem(cpu.PC+1);
+        if(a1>>8!=(cpu.PC+2)>>8){
+            cpu.wait=3;
+        }
+        else{
+            cpu.wait=2;
+        }
         if((cpu.P&64)>>6==0){
             cpu.PC=a1;
         }
         else{
             cpu.PC+=2;
         }
-        cpu.wait=2;
         break;
     case 0x70:
         a1=cpu.PC+(char)load_cpu_mem(cpu.PC+1);
+        if(a1>>8!=(cpu.PC+2)>>8){
+            cpu.wait=3;
+        }
+        else{
+            cpu.wait=2;
+        }
         if((cpu.P&64)>>6==1){
             cpu.PC=a1;
         }
         else{
             cpu.PC+=2;
         }
-        cpu.wait=2;
         break;
 
     case 0x18:
