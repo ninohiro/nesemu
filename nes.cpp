@@ -11,7 +11,22 @@ unsigned char NES::load_cpu_mem(unsigned short addr){
         return cpu.ram[addr];
     }
     else if(addr>=0x2000 && addr<=0x2007){
-        return ppu.registers[addr-0x2000];
+        if(addr==0x2002){
+            ppu.write_toggle=false;
+        }
+        if(addr==0x2007){
+            char v=load_ppu_mem(ppu.internal_addr);
+            if(ppu.registers[0]&4){
+                ppu.internal_addr+=32;
+            }
+            else{
+                ppu.internal_addr+=1;
+            }
+            return v;
+        }
+        else{
+            return ppu.registers[addr-0x2000];
+        }
     }
     else if(addr>=0x4000 && addr<=0x401F){
         return io[addr-0x4000];
@@ -28,10 +43,48 @@ void NES::store_cpu_mem(unsigned short addr,unsigned char value){
         cpu.ram[addr]=value;
     }
     else if(addr>=0x2000 && addr<=0x2007){
-        ppu.registers[addr-0x2000]=value;
+        if(addr==0x2005){
+            if(!ppu.write_toggle){
+                ppu.scroll_x=value;
+            }
+            else{
+                ppu.scroll_y=value;
+            }
+            ppu.write_toggle=!ppu.write_toggle;
+        }
+        else if(addr==0x2006){
+            if(!ppu.write_toggle){
+                ppu.internal_addr=(unsigned short)value<<8;
+            }
+            else{
+                ppu.internal_addr|=value;
+            }
+            ppu.write_toggle=!ppu.write_toggle;
+        }
+        else if(addr==0x2007){
+            store_ppu_mem(ppu.internal_addr,value);
+            if(ppu.registers[0]&4){
+                ppu.internal_addr+=32;
+            }
+            else{
+                ppu.internal_addr+=1;
+            }
+        }
+        else{
+            ppu.registers[addr-0x2000]=value;
+        }
     }
     else if(addr>=0x4000 && addr<=0x401F){
-        io[addr-0x4000]=value;
+        if(addr==0x4014){
+            unsigned short start=(unsigned short)value<<8;
+            for(int i=0;i<256;i++){
+                ppu.oam[i]=load_cpu_mem(start+i);
+            }
+            cpu.dma_wait=513;
+        }
+        else{
+            io[addr-0x4000]=value;
+        }
     }
     else{
         throw "store: invalid addr";
@@ -41,6 +94,10 @@ void NES::store_cpu_mem(unsigned short addr,unsigned char value){
 void NES::step_cpu(){
     if(cpu.wait>0){
         cpu.wait--;
+        return;
+    }
+    if(cpu.dma_wait>0){
+        cpu.dma_wait--;
         return;
     }
     unsigned char c=load_cpu_mem(cpu.PC);
@@ -1283,7 +1340,4 @@ void NES::step_cpu(){
         throw "Unknown instruction";
     }
     cpu.wait--;
-}
-void NES::step_ppu(){
-
 }

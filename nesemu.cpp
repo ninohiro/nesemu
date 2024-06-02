@@ -13,7 +13,7 @@ int main()
     SDL_Window *window = SDL_CreateWindow("Hello World!", 100, 100, 640, 480, SDL_WINDOW_SHOWN);
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, 0);
     SDL_Event ev;
-    Uint32 pixel_format_enum=SDL_GetWindowPixelFormat(window);
+    Uint32 pixel_format_enum=SDL_PIXELFORMAT_RGBA8888;
     SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormat(0,256,240,32,pixel_format_enum);
     SDL_PixelFormat *pixel_format=SDL_AllocFormat(pixel_format_enum);
     uint32_t *pixels=(uint32_t*)surface->pixels;

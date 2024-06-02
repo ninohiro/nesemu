@@ -9,9 +9,19 @@ struct CPU{
     unsigned short PC;
     unsigned char P;
     int wait;
+    int dma_wait;
 };
 struct PPU{
     unsigned char registers[8];
+    unsigned char vram[2048];
+    unsigned char palette_ram[32];
+    int counter;
+    bool odd_even;
+    bool write_toggle;
+    unsigned char scroll_x;
+    unsigned char scroll_y;
+    unsigned short internal_addr;
+    unsigned char oam[256];
 };
 class NES{
     CPU cpu;
@@ -21,11 +31,16 @@ class NES{
     unsigned char pin_irq;
     unsigned char pin_nmi;
     unsigned char pin_reset;
+    uint32_t fb[480][512];
     uint32_t *pixels;
 public:
     NES(INES ines,uint32_t *pixels);
     void step_cpu();
     void step_ppu();
     unsigned char load_cpu_mem(unsigned short addr);
+    unsigned char load_ppu_mem(unsigned short addr);
     void store_cpu_mem(unsigned short addr,unsigned char value);
+    void store_ppu_mem(unsigned short addr,unsigned char value);
+    void render_fb();
+    void copy_fb();
 };

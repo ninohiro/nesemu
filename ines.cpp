@@ -13,8 +13,9 @@ INES read_rom(const std::string &s){
     std::istreambuf_iterator<char> it(ifs);
     std::istreambuf_iterator<char> last;
     std::vector<char> rom(it, last);
-    ines.prg_size=(unsigned char)rom[4];
-    ines.chr_size=(unsigned char)rom[5];
+    ines.prg_size=rom[4];
+    ines.chr_size=rom[5];
+    ines.flag=rom[6];
     ines.prg.resize(ines.prg_size*16384);
     ines.chr.resize(ines.chr_size*8192);
     int n=16;
