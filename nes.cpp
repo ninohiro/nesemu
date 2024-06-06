@@ -100,12 +100,23 @@ void NES::step_cpu(){
         cpu.dma_wait--;
         return;
     }
-    unsigned char c=load_cpu_mem(cpu.PC);
-    if(pin_irq){
-    }
-    pin_irq=0;
     unsigned short a1,a2;
     unsigned char v1,v2;
+    if(pin_nmi){
+        a1=cpu.PC;
+        store_cpu_mem(cpu.S-1,(unsigned char)a1);
+        store_cpu_mem(cpu.S,(unsigned char)(a1>>8));
+        cpu.S-=2;
+        store_cpu_mem(cpu.S,cpu.P&~16);
+        cpu.S--;
+        a2=load_cpu_mem(0xFFFA)+load_cpu_mem(0xFFFB)*256;
+        cpu.PC=a2;
+        cpu.wait=7;
+        pin_nmi=0;
+        cpu.wait--;
+        return;
+    }
+    unsigned char c=load_cpu_mem(cpu.PC);
     switch(c){
     case 0xA9:
         cpu.A=load_cpu_mem(cpu.PC+1);
