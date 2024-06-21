@@ -2,6 +2,7 @@
 #include <cstdlib>
 struct CPU{
     unsigned char ram[2048];
+    unsigned char prg_ram[8192];
     unsigned char A;
     unsigned char X;
     unsigned char Y;
@@ -10,6 +11,8 @@ struct CPU{
     unsigned char P;
     int wait;
     int dma_wait;
+    unsigned char prev_instr;
+    unsigned short prev_pc;
 };
 struct PPU{
     unsigned char registers[8];
@@ -22,6 +25,7 @@ struct PPU{
     unsigned char scroll_y;
     unsigned short internal_addr;
     unsigned char oam[256];
+    unsigned char chr_ram[8192];
 };
 class NES{
     CPU cpu;
@@ -31,7 +35,7 @@ class NES{
     unsigned char pin_irq;
     unsigned char pin_nmi;
     unsigned char pin_reset;
-    uint32_t fb[480][512];
+    uint32_t fb[1024][1024];
     uint32_t *pixels;
 public:
     NES(INES ines,uint32_t *pixels);
