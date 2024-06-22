@@ -11,7 +11,7 @@ int main()
 {
     SDL_Init(SDL_INIT_EVERYTHING);
 
-    SDL_Window *window = SDL_CreateWindow("Hello World!", 100, 100, 640, 480, SDL_WINDOW_SHOWN);
+    SDL_Window *window = SDL_CreateWindow("nesemu", 100, 100, 640, 480, SDL_WINDOW_SHOWN);
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, 0);
     SDL_Event ev;
     Uint32 pixel_format_enum=SDL_PIXELFORMAT_ARGB8888;

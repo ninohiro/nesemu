@@ -1,4 +1,5 @@
 #include "nes.h"
+
 NES::NES(INES ines,uint32_t *pixels):cpu{},ppu{},ines{ines},pixels{pixels}{
     cpu.S=0xFD;
     unsigned short a1=(unsigned short)load_cpu_mem(0xFFFC)+(unsigned short)load_cpu_mem(0xFFFD)*256;
@@ -109,7 +110,7 @@ void NES::step_cpu(){
         return;
     }
     unsigned short a1,a2;
-    unsigned char v1,v2;
+    unsigned char v1,v2,v3;
     unsigned short s1;
     if(pin_nmi){
         a1=cpu.PC;
@@ -120,16 +121,17 @@ void NES::step_cpu(){
         store_cpu_mem(0x100+((cpu.S+1)&0xff),~16&cpu.P);
         a2=(unsigned short)load_cpu_mem(0xFFFA)+(unsigned short)load_cpu_mem(0xFFFB)*256;
         cpu.PC=a2;
+        cpu.P|=4;
         cpu.wait=7;
         pin_nmi=0;
         cpu.wait--;
         return;
     }
-    if(cpu.PC==0xE2EF){
-        cpu.PC=cpu.PC;
-    }
     cpu.prev_pc=cpu.PC;
     unsigned char c=load_cpu_mem(cpu.PC);
+    if(cpu.PC==0x03A0){
+        cpu.PC=cpu.PC;
+    }
     switch(c){
     case 0xA9:
         cpu.A=load_cpu_mem(cpu.PC+1);
@@ -145,7 +147,7 @@ void NES::step_cpu(){
         cpu.wait=3;
         break;
     case 0xB5:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         cpu.A=load_cpu_mem(a1);
         cpu.P=(~(128|2)&cpu.P)|(cpu.A&128)|(2*(cpu.A==0));
         cpu.PC+=2;
@@ -173,7 +175,7 @@ void NES::step_cpu(){
         cpu.wait=4;
         break;
     case 0xA1:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         a2=(unsigned short)load_cpu_mem(a1&0xff)+(unsigned short)load_cpu_mem((a1+1)&0xff)*256;
         cpu.A=load_cpu_mem(a2);
         cpu.P=(~(128|2)&cpu.P)|(cpu.A&128)|(2*(cpu.A==0));
@@ -202,7 +204,7 @@ void NES::step_cpu(){
         cpu.wait=3;
         break;
     case 0xB6:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.Y;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.Y);
         cpu.X=load_cpu_mem(a1);
         cpu.P=(~(128|2)&cpu.P)|(cpu.X&128)|(2*(cpu.X==0));
         cpu.PC+=2;
@@ -236,7 +238,7 @@ void NES::step_cpu(){
         cpu.wait=3;
         break;
     case 0xB4:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         cpu.Y=load_cpu_mem(a1);
         cpu.P=(~(128|2)&cpu.P)|(cpu.Y&128)|(2*(cpu.Y==0));
         cpu.PC+=2;
@@ -263,7 +265,7 @@ void NES::step_cpu(){
         cpu.wait=3;
         break;
     case 0x95:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         store_cpu_mem(a1,cpu.A);
         cpu.PC+=2;
         cpu.wait=4;
@@ -287,7 +289,7 @@ void NES::step_cpu(){
         cpu.wait=5;
         break;
     case 0x81:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         a2=(unsigned short)load_cpu_mem(a1&0xff)+(unsigned short)load_cpu_mem((a1+1)&0xff)*256;
         store_cpu_mem(a2,cpu.A);
         cpu.PC+=2;
@@ -307,7 +309,7 @@ void NES::step_cpu(){
         cpu.wait=3;
         break;
     case 0x96:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.Y;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.Y);
         store_cpu_mem(a1,cpu.X);
         cpu.PC+=2;
         cpu.wait=4;
@@ -325,7 +327,7 @@ void NES::step_cpu(){
         cpu.wait=3;
         break;
     case 0x94:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         store_cpu_mem(a1,cpu.Y);
         cpu.PC+=2;
         cpu.wait=4;
@@ -362,7 +364,6 @@ void NES::step_cpu(){
         break;
     case 0x9A:
         cpu.S=cpu.X;
-        cpu.P=(~(128|2)&cpu.P)|(cpu.S&128)|(2*(cpu.S==0));
         cpu.PC+=1;
         cpu.wait=2;
         break;
@@ -377,7 +378,7 @@ void NES::step_cpu(){
         v1=cpu.A;
         v2=load_cpu_mem(cpu.PC+1);
         cpu.A=v1+v2+(cpu.P&1);
-        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1|v2)>>7==1&&cpu.A>>7==0));
+        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1&v2)>>7==1||((v1|v2)>>7==1&&cpu.A>>7==0)));
         cpu.PC+=2;
         cpu.wait=2;
         break;
@@ -386,16 +387,16 @@ void NES::step_cpu(){
         v1=cpu.A;
         v2=load_cpu_mem(a1);
         cpu.A=v1+v2+(cpu.P&1);
-        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1|v2)>>7==1&&cpu.A>>7==0));
+        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1&v2)>>7==1||((v1|v2)>>7==1&&cpu.A>>7==0)));
         cpu.PC+=2;
         cpu.wait=3;
         break;
     case 0x75:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         v1=cpu.A;
         v2=load_cpu_mem(a1);
         cpu.A=v1+v2+(cpu.P&1);
-        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1|v2)>>7==1&&cpu.A>>7==0));
+        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1&v2)>>7==1||((v1|v2)>>7==1&&cpu.A>>7==0)));
         cpu.PC+=2;
         cpu.wait=4;
         break;
@@ -404,7 +405,7 @@ void NES::step_cpu(){
         v1=cpu.A;
         v2=load_cpu_mem(a1);
         cpu.A=v1+v2+(cpu.P&1);
-        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1|v2)>>7==1&&cpu.A>>7==0));
+        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1&v2)>>7==1||((v1|v2)>>7==1&&cpu.A>>7==0)));
         cpu.PC+=3;
         cpu.wait=4;
         break;
@@ -413,7 +414,7 @@ void NES::step_cpu(){
         v1=cpu.A;
         v2=load_cpu_mem(a1);
         cpu.A=v1+v2+(cpu.P&1);
-        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1|v2)>>7==1&&cpu.A>>7==0));
+        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1&v2)>>7==1||((v1|v2)>>7==1&&cpu.A>>7==0)));
         cpu.PC+=3;
         cpu.wait=4;
         break;
@@ -422,17 +423,17 @@ void NES::step_cpu(){
         v1=cpu.A;
         v2=load_cpu_mem(a1);
         cpu.A=v1+v2+(cpu.P&1);
-        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1|v2)>>7==1&&cpu.A>>7==0));
+        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1&v2)>>7==1||((v1|v2)>>7==1&&cpu.A>>7==0)));
         cpu.PC+=3;
         cpu.wait=4;
         break;
     case 0x61:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         a2=(unsigned short)load_cpu_mem(a1&0xff)+(unsigned short)load_cpu_mem((a1+1)&0xff)*256;
         v1=cpu.A;
         v2=load_cpu_mem(a2);
         cpu.A=v1+v2+(cpu.P&1);
-        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1|v2)>>7==1&&cpu.A>>7==0));
+        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1&v2)>>7==1||((v1|v2)>>7==1&&cpu.A>>7==0)));
         cpu.PC+=2;
         cpu.wait=6;
         break;
@@ -442,7 +443,7 @@ void NES::step_cpu(){
         v1=cpu.A;
         v2=load_cpu_mem(a2);
         cpu.A=v1+v2+(cpu.P&1);
-        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1|v2)>>7==1&&cpu.A>>7==0));
+        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1&v2)>>7==1||((v1|v2)>>7==1&&cpu.A>>7==0)));
         cpu.PC+=2;
         cpu.wait=5;
         break;
@@ -461,7 +462,7 @@ void NES::step_cpu(){
         cpu.wait=3;
         break;
     case 0x35:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         cpu.A&=load_cpu_mem(a1);
         cpu.P=(~(128|2)&cpu.P)|(cpu.A&128)|(2*(cpu.A==0));
         cpu.PC+=2;
@@ -489,7 +490,7 @@ void NES::step_cpu(){
         cpu.wait=4;
         break;
     case 0x21:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         a2=(unsigned short)load_cpu_mem(a1&0xff)+(unsigned short)load_cpu_mem((a1+1)&0xff)*256;
         cpu.A&=load_cpu_mem(a2);
         cpu.P=(~(128|2)&cpu.P)|(cpu.A&128)|(2*(cpu.A==0));
@@ -523,7 +524,7 @@ void NES::step_cpu(){
         cpu.wait=5;
         break;
     case 0x16:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         v1=load_cpu_mem(a1);
         cpu.P=(~1&cpu.P)|(1*(v1>>7));
         v1<<=1;
@@ -569,115 +570,115 @@ void NES::step_cpu(){
         break;
 
     case 0xC9:
-        v1=-load_cpu_mem(cpu.PC+1);
-        v2=cpu.A+v1;
-        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1|cpu.A)>>7==1&&v2>>7==0));
+        v1=~load_cpu_mem(cpu.PC+1);
+        v2=cpu.A+v1+1;
+        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1&cpu.A)>>7==1||((v1|cpu.A)>>7==1&&v2>>7==0)));
         cpu.PC+=2;
         cpu.wait=2;
         break;
     case 0xC5:
         a1=load_cpu_mem(cpu.PC+1);
-        v1=-load_cpu_mem(a1);
-        v2=cpu.A+v1;
-        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1|cpu.A)>>7==1&&v2>>7==0));
+        v1=~load_cpu_mem(a1);
+        v2=cpu.A+v1+1;
+        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1&cpu.A)>>7==1||((v1|cpu.A)>>7==1&&v2>>7==0)));
         cpu.PC+=2;
         cpu.wait=3;
         break;
     case 0xD5:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
-        v1=-load_cpu_mem(a1);
-        v2=cpu.A+v1;
-        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1|cpu.A)>>7==1&&v2>>7==0));
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
+        v1=~load_cpu_mem(a1);
+        v2=cpu.A+v1+1;
+        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1&cpu.A)>>7==1||((v1|cpu.A)>>7==1&&v2>>7==0)));
         cpu.PC+=2;
         cpu.wait=4;
         break;
     case 0xCD:
         a1=(unsigned short)load_cpu_mem(cpu.PC+1)+(unsigned short)load_cpu_mem(cpu.PC+2)*256;
-        v1=-load_cpu_mem(a1);
-        v2=cpu.A+v1;
-        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1|cpu.A)>>7==1&&v2>>7==0));
+        v1=~load_cpu_mem(a1);
+        v2=cpu.A+v1+1;
+        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1&cpu.A)>>7==1||((v1|cpu.A)>>7==1&&v2>>7==0)));
         cpu.PC+=3;
         cpu.wait=4;
         break;
     case 0xDD:
         a1=(unsigned short)load_cpu_mem(cpu.PC+1)+(unsigned short)load_cpu_mem(cpu.PC+2)*256+cpu.X;
-        v1=-load_cpu_mem(a1);
-        v2=cpu.A+v1;
-        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1|cpu.A)>>7==1&&v2>>7==0));
+        v1=~load_cpu_mem(a1);
+        v2=cpu.A+v1+1;
+        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1&cpu.A)>>7==1||((v1|cpu.A)>>7==1&&v2>>7==0)));
         cpu.PC+=3;
         cpu.wait=4;
         break;
     case 0xD9:
         a1=(unsigned short)load_cpu_mem(cpu.PC+1)+(unsigned short)load_cpu_mem(cpu.PC+2)*256+cpu.Y;
-        v1=-load_cpu_mem(a1);
-        v2=cpu.A+v1;
-        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1|cpu.A)>>7==1&&v2>>7==0));
+        v1=~load_cpu_mem(a1);
+        v2=cpu.A+v1+1;
+        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1&cpu.A)>>7==1||((v1|cpu.A)>>7==1&&v2>>7==0)));
         cpu.PC+=3;
         cpu.wait=4;
         break;
     case 0xC1:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         a2=(unsigned short)load_cpu_mem(a1&0xff)+(unsigned short)load_cpu_mem((a1+1)&0xff)*256;
-        v1=-load_cpu_mem(a2);
-        v2=cpu.A+v1;
-        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1|cpu.A)>>7==1&&v2>>7==0));
+        v1=~load_cpu_mem(a2);
+        v2=cpu.A+v1+1;
+        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1&cpu.A)>>7==1||((v1|cpu.A)>>7==1&&v2>>7==0)));
         cpu.PC+=2;
         cpu.wait=6;
         break;
     case 0xD1:
         a1=load_cpu_mem(cpu.PC+1);
         a2=(unsigned short)load_cpu_mem(a1&0xff)+(unsigned short)load_cpu_mem((a1+1)&0xff)*256+cpu.Y;
-        v1=-load_cpu_mem(a2);
-        v2=cpu.A+v1;
-        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1|cpu.A)>>7==1&&v2>>7==0));
+        v1=~load_cpu_mem(a2);
+        v2=cpu.A+v1+1;
+        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1&cpu.A)>>7==1||((v1|cpu.A)>>7==1&&v2>>7==0)));
         cpu.PC+=2;
         cpu.wait=5;
         break;
 
     case 0xE0:
-        v1=-load_cpu_mem(cpu.PC+1);
-        v2=cpu.X+v1;
-        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1|cpu.X)>>7==1&&v2>>7==0));
+        v1=~load_cpu_mem(cpu.PC+1);
+        v2=cpu.X+v1+1;
+        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1&cpu.X)>>7==1||((v1|cpu.X)>>7==1&&v2>>7==0)));
         cpu.PC+=2;
         cpu.wait=2;
         break;
     case 0xE4:
         a1=load_cpu_mem(cpu.PC+1);
-        v1=-load_cpu_mem(a1);
-        v2=cpu.X+v1;
-        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1|cpu.X)>>7==1&&v2>>7==0));
+        v1=~load_cpu_mem(a1);
+        v2=cpu.X+v1+1;
+        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1&cpu.X)>>7==1||((v1|cpu.X)>>7==1&&v2>>7==0)));
         cpu.PC+=2;
         cpu.wait=3;
         break;
     case 0xEC:
         a1=(unsigned short)load_cpu_mem(cpu.PC+1)+(unsigned short)load_cpu_mem(cpu.PC+2)*256;
-        v1=-load_cpu_mem(a1);
-        v2=cpu.X+v1;
-        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1|cpu.X)>>7==1&&v2>>7==0));
+        v1=~load_cpu_mem(a1);
+        v2=cpu.X+v1+1;
+        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1&cpu.X)>>7==1||((v1|cpu.X)>>7==1&&v2>>7==0)));
         cpu.PC+=3;
         cpu.wait=4;
         break;
 
     case 0xC0:
-        v1=-load_cpu_mem(cpu.PC+1);
-        v2=cpu.Y+v1;
-        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1|cpu.Y)>>7==1&&v2>>7==0));
+        v1=~load_cpu_mem(cpu.PC+1);
+        v2=cpu.Y+v1+1;
+        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1&cpu.Y)>>7==1||((v1|cpu.Y)>>7==1&&v2>>7==0)));
         cpu.PC+=2;
         cpu.wait=2;
         break;
     case 0xC4:
         a1=load_cpu_mem(cpu.PC+1);
-        v1=-load_cpu_mem(a1);
-        v2=cpu.Y+v1;
-        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1|cpu.Y)>>7==1&&v2>>7==0));
+        v1=~load_cpu_mem(a1);
+        v2=cpu.Y+v1+1;
+        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1&cpu.Y)>>7==1||((v1|cpu.Y)>>7==1&&v2>>7==0)));
         cpu.PC+=2;
         cpu.wait=3;
         break;
     case 0xCC:
         a1=(unsigned short)load_cpu_mem(cpu.PC+1)+(unsigned short)load_cpu_mem(cpu.PC+2)*256;
-        v1=-load_cpu_mem(a1);
-        v2=cpu.Y+v1;
-        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1|cpu.Y)>>7==1&&v2>>7==0));
+        v1=~load_cpu_mem(a1);
+        v2=cpu.Y+v1+1;
+        cpu.P=(~(128|2|1)&cpu.P)|(128&v2)|(2*(v2==0))|(1*((v1&cpu.Y)>>7==1||((v1|cpu.Y)>>7==1&&v2>>7==0)));
         cpu.PC+=3;
         cpu.wait=4;
         break;
@@ -692,7 +693,7 @@ void NES::step_cpu(){
         cpu.wait=5;
         break;
     case 0xD6:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         v1=load_cpu_mem(a1);
         v1--;
         store_cpu_mem(a1,v1);
@@ -745,7 +746,7 @@ void NES::step_cpu(){
         cpu.wait=3;
         break;
     case 0x55:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         cpu.A^=load_cpu_mem(a1);
         cpu.P=(~(128|2)&cpu.P)|(cpu.A&128)|(2*(cpu.A==0));
         cpu.PC+=2;
@@ -773,7 +774,7 @@ void NES::step_cpu(){
         cpu.wait=4;
         break;
     case 0x41:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         a2=(unsigned short)load_cpu_mem(a1&0xff)+(unsigned short)load_cpu_mem((a1+1)&0xff)*256;
         cpu.A^=load_cpu_mem(a2);
         cpu.P=(~(128|2)&cpu.P)|(cpu.A&128)|(2*(cpu.A==0));
@@ -799,7 +800,7 @@ void NES::step_cpu(){
         cpu.wait=5;
         break;
     case 0xF6:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         v1=load_cpu_mem(a1);
         v1++;
         store_cpu_mem(a1,v1);
@@ -857,7 +858,7 @@ void NES::step_cpu(){
         cpu.wait=5;
         break;
     case 0x56:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         v1=load_cpu_mem(a1);
         cpu.P=(~1&cpu.P)|(1*(v1&1));
         v1>>=1;
@@ -901,7 +902,7 @@ void NES::step_cpu(){
         cpu.wait=3;
         break;
     case 0x15:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         cpu.A|=load_cpu_mem(a1);
         cpu.P=(~(128|2)&cpu.P)|(cpu.A&128)|(2*(cpu.A==0));
         cpu.PC+=2;
@@ -929,7 +930,7 @@ void NES::step_cpu(){
         cpu.wait=4;
         break;
     case 0x01:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         a2=(unsigned short)load_cpu_mem(a1&0xff)+(unsigned short)load_cpu_mem((a1+1)&0xff)*256;
         cpu.A|=load_cpu_mem(a2);
         cpu.P=(~(128|2)&cpu.P)|(cpu.A&128)|(2*(cpu.A==0));
@@ -967,7 +968,7 @@ void NES::step_cpu(){
         cpu.wait=5;
         break;
     case 0x36:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         v1=load_cpu_mem(a1);
         v2=cpu.P&1;
         cpu.P=(~1&cpu.P)|(1*(v1>>7));
@@ -1025,7 +1026,7 @@ void NES::step_cpu(){
         cpu.wait=5;
         break;
     case 0x76:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         v1=load_cpu_mem(a1);
         v2=cpu.P&1;
         cpu.P=(~1&cpu.P)|(1*(v1&1));
@@ -1065,7 +1066,7 @@ void NES::step_cpu(){
         v1=cpu.A;
         v2=~load_cpu_mem(cpu.PC+1);
         cpu.A=v1+v2+(cpu.P&1);
-        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1|v2)>>7==1&&cpu.A>>7==0));
+        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1&v2)>>7==1||((v1|v2)>>7==1&&cpu.A>>7==0)));
         cpu.PC+=2;
         cpu.wait=2;
         break;
@@ -1074,16 +1075,16 @@ void NES::step_cpu(){
         v1=cpu.A;
         v2=~load_cpu_mem(a1);
         cpu.A=v1+v2+(cpu.P&1);
-        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1|v2)>>7==1&&cpu.A>>7==0));
+        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1&v2)>>7==1||((v1|v2)>>7==1&&cpu.A>>7==0)));
         cpu.PC+=2;
         cpu.wait=3;
         break;
     case 0xF5:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         v1=cpu.A;
         v2=~load_cpu_mem(a1);
         cpu.A=v1+v2+(cpu.P&1);
-        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1|v2)>>7==1&&cpu.A>>7==0));
+        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1&v2)>>7==1||((v1|v2)>>7==1&&cpu.A>>7==0)));
         cpu.PC+=2;
         cpu.wait=4;
         break;
@@ -1092,7 +1093,7 @@ void NES::step_cpu(){
         v1=cpu.A;
         v2=~load_cpu_mem(a1);
         cpu.A=v1+v2+(cpu.P&1);
-        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1|v2)>>7==1&&cpu.A>>7==0));
+        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1&v2)>>7==1||((v1|v2)>>7==1&&cpu.A>>7==0)));
         cpu.PC+=3;
         cpu.wait=4;
         break;
@@ -1101,7 +1102,7 @@ void NES::step_cpu(){
         v1=cpu.A;
         v2=~load_cpu_mem(a1);
         cpu.A=v1+v2+(cpu.P&1);
-        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1|v2)>>7==1&&cpu.A>>7==0));
+        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1&v2)>>7==1||((v1|v2)>>7==1&&cpu.A>>7==0)));
         cpu.PC+=3;
         cpu.wait=4;
         break;
@@ -1110,17 +1111,17 @@ void NES::step_cpu(){
         v1=cpu.A;
         v2=~load_cpu_mem(a1);
         cpu.A=v1+v2+(cpu.P&1);
-        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1|v2)>>7==1&&cpu.A>>7==0));
+        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1&v2)>>7==1||((v1|v2)>>7==1&&cpu.A>>7==0)));
         cpu.PC+=3;
         cpu.wait=4;
         break;
     case 0xE1:
-        a1=load_cpu_mem(cpu.PC+1)+cpu.X;
+        a1=(unsigned char)(load_cpu_mem(cpu.PC+1)+cpu.X);
         a2=(unsigned short)load_cpu_mem(a1&0xff)+(unsigned short)load_cpu_mem((a1+1)&0xff)*256;
         v1=cpu.A;
         v2=~load_cpu_mem(a2);
         cpu.A=v1+v2+(cpu.P&1);
-        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1|v2)>>7==1&&cpu.A>>7==0));
+        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1&v2)>>7==1||((v1|v2)>>7==1&&cpu.A>>7==0)));
         cpu.PC+=2;
         cpu.wait=6;
         break;
@@ -1130,7 +1131,7 @@ void NES::step_cpu(){
         v1=cpu.A;
         v2=~load_cpu_mem(a2);
         cpu.A=v1+v2+(cpu.P&1);
-        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1|v2)>>7==1&&cpu.A>>7==0));
+        cpu.P=(~(128|64|2|1)&cpu.P)|(cpu.A&128)|(64*((v1>>7==v2>>7)&&(v1>>7!=cpu.A>>7)))|(2*(cpu.A==0))|(1*((v1&v2)>>7==1||((v1|v2)>>7==1&&cpu.A>>7==0)));
         cpu.PC+=2;
         cpu.wait=5;
         break;
@@ -1169,7 +1170,7 @@ void NES::step_cpu(){
         break;
     case 0x6C:
         a1=(unsigned short)load_cpu_mem(cpu.PC+1)+(unsigned short)load_cpu_mem(cpu.PC+2)*256;
-        a2=(unsigned short)load_cpu_mem(a1)+(unsigned short)load_cpu_mem(a1+1)*256;
+        a2=(unsigned short)load_cpu_mem(a1)+(unsigned short)load_cpu_mem((a1&0xff00)|(a1+1)&0xff)*256;
         cpu.PC=a2;
         cpu.wait=5;
         break;
@@ -1314,6 +1315,7 @@ void NES::step_cpu(){
         store_cpu_mem(0x100+((cpu.S+1)&0xff),cpu.P|16);
         a2=(unsigned short)load_cpu_mem(0xFFFE)+(unsigned short)load_cpu_mem(0xFFFF)*256;
         cpu.PC=a2;
+        cpu.P|=4;
         cpu.wait=7;
         break;
 
