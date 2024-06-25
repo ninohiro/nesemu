@@ -1,7 +1,7 @@
 #include "nes.h"
 
-NES::NES(INES ines,uint32_t *pixels):cpu{},ppu{},ines{ines},pixels{pixels}{
-    cpu.S=0xFD;
+void NES::reset(){
+    cpu.S-=3;
     unsigned short a1=(unsigned short)load_cpu_mem(0xFFFC)+(unsigned short)load_cpu_mem(0xFFFD)*256;
     cpu.PC=a1;
     cpu.P=32|4;
@@ -22,7 +22,14 @@ unsigned char NES::load_cpu_mem(unsigned short addr){
             v=ppu.oam[ppu.registers[3]];
         }
         else if(addr==0x2007){
-            v=load_ppu_mem(ppu.internal_addr);
+            unsigned char c=load_ppu_mem(ppu.internal_addr);
+            if(ppu.internal_addr>=0x3F00){
+                v=c;
+            }
+            else{
+                v=ppu.read_buf;
+            }
+            ppu.read_buf=c;
             if(ppu.registers[0]&4){
                 ppu.internal_addr+=32;
             }
@@ -33,12 +40,21 @@ unsigned char NES::load_cpu_mem(unsigned short addr){
         return v;
     }
     else if(addr>=0x4000 && addr<=0x401F){
+        if(addr==0x4016){
+            if(controller_index>=8){
+                return 0;
+            }
+            return controller[controller_index++];
+        }
         return io[addr-0x4000];
     }
     else if(addr>=0x6000 && addr<=0x7FFF){
         return cpu.prg_ram[addr-0x6000];
     }
     else if(addr>=0x8000){
+        if(ines.prg_size==1){
+            return ines.prg[addr&0x3FFF];
+        }
         return ines.prg[addr-0x8000];
     }
     else{
@@ -91,9 +107,30 @@ void NES::store_cpu_mem(unsigned short addr,unsigned char value){
         if(addr==0x4014){
             unsigned short start=(unsigned short)value*256;
             for(int i=0;i<256;i++){
-                ppu.oam[i]=load_cpu_mem(start+i);
+                ppu.oam[(unsigned char)(i+ppu.registers[3])]=load_cpu_mem(start+i);
+            }
+            for(int i=0;i<33;i++){
+                for(int j=0;j<33;j++){
+                    ppu.oam_list_size[i][j]=0;
+                }
+            }
+            for(int i=0;i<64;i++){
+                int c_x=ppu.oam[i*4+3]/8,c_y=ppu.oam[i*4]/8;
+                ppu.oam_list[c_y][c_x][ppu.oam_list_size[c_y][c_x]]=i;
+                ppu.oam_list_size[c_y][c_x]++;
+                ppu.oam_list[c_y][c_x+1][ppu.oam_list_size[c_y][c_x+1]]=i;
+                ppu.oam_list_size[c_y][c_x+1]++;
+                ppu.oam_list[c_y+1][c_x][ppu.oam_list_size[c_y+1][c_x]]=i;
+                ppu.oam_list_size[c_y+1][c_x]++;
+                ppu.oam_list[c_y+1][c_x+1][ppu.oam_list_size[c_y+1][c_x+1]]=i;
+                ppu.oam_list_size[c_y+1][c_x+1]++;
             }
             cpu.dma_wait=513;
+        }
+        else if(addr==0x4016){
+            if(!(value&1)){
+                controller_index=0;
+            }
         }
         else{
             io[addr-0x4000]=value;
@@ -134,11 +171,11 @@ void NES::step_cpu(){
         cpu.wait--;
         return;
     }
-    cpu.prev_pc=cpu.PC;
-    unsigned char c=load_cpu_mem(cpu.PC);
-    if(cpu.PC==0x03A0){
+    if(cpu.PC==0x8E92 && cpu.A==0xd8){
         cpu.PC=cpu.PC;
     }
+    cpu.prev_pc=cpu.PC;
+    unsigned char c=load_cpu_mem(cpu.PC);
     switch(c){
     case 0xA9:
         cpu.A=load_cpu_mem(cpu.PC+1);

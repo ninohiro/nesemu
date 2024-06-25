@@ -19,7 +19,10 @@ int main()
     SDL_PixelFormat *pixel_format=SDL_AllocFormat(pixel_format_enum);
     uint32_t *pixels=(uint32_t*)surface->pixels;
     INES ines=read_rom("../roms/smb.nes");
-    NES nes(ines,pixels);
+    NES nes{};
+    nes.ines=ines;
+    nes.pixels=pixels;
+    nes.reset();
     uint64_t cl=0;
     uint64_t ms=SDL_GetTicks64();
     while(true){
@@ -29,6 +32,15 @@ int main()
             if (ev.type == SDL_QUIT)
                 return 0;
         }
+        const Uint8 *keys=SDL_GetKeyboardState(NULL);
+        nes.controller[0]=keys[SDL_SCANCODE_Z];
+        nes.controller[1]=keys[SDL_SCANCODE_X];
+        nes.controller[2]=keys[SDL_SCANCODE_A];
+        nes.controller[3]=keys[SDL_SCANCODE_S];
+        nes.controller[4]=keys[SDL_SCANCODE_UP];
+        nes.controller[5]=keys[SDL_SCANCODE_DOWN];
+        nes.controller[6]=keys[SDL_SCANCODE_LEFT];
+        nes.controller[7]=keys[SDL_SCANCODE_RIGHT];
         uint64_t d=SDL_GetTicks64()-ms;
         uint64_t n_cl=(uint64_t)(d*(1.789773*1000))-cl;
         for(int i=0;i<n_cl;i++){

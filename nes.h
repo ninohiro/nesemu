@@ -18,6 +18,7 @@ struct PPU{
     unsigned char registers[8];
     unsigned char vram[2048];
     unsigned char palette_ram[32];
+    unsigned char read_buf;
     int counter;
     bool odd_even;
     bool write_toggle;
@@ -25,9 +26,11 @@ struct PPU{
     unsigned char scroll_y;
     unsigned short internal_addr;
     unsigned char oam[256];
+    unsigned char oam_list[33][33][64];
+    unsigned char oam_list_size[33][33];
     unsigned char chr_ram[8192];
 };
-class NES{
+struct NES{
     CPU cpu;
     PPU ppu;
     INES ines;
@@ -35,9 +38,10 @@ class NES{
     unsigned char pin_irq;
     unsigned char pin_nmi;
     unsigned char pin_reset;
+    unsigned char controller[8];
+    int controller_index;
+    bool polling;
     uint32_t *pixels;
-public:
-    NES(INES ines,uint32_t *pixels);
     void step_cpu();
     void step_ppu();
     unsigned char load_cpu_mem(unsigned short addr);
@@ -45,4 +49,5 @@ public:
     void store_cpu_mem(unsigned short addr,unsigned char value);
     void store_ppu_mem(unsigned short addr,unsigned char value);
     void render();
+    void reset();
 };
