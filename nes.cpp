@@ -13,22 +13,24 @@ unsigned char NES::load_cpu_mem(unsigned short addr){
     }
     else if(addr>=0x2000 && addr<=0x3FFF){
         addr=(addr&0x7)|0x2000;
+        unsigned char v=ppu.registers[addr-0x2000];
         if(addr==0x2002){
             ppu.write_toggle=false;
+            ppu.registers[2]=~128&ppu.registers[2];
         }
-        if(addr==0x2007){
-            unsigned char v=load_ppu_mem(ppu.internal_addr);
+        else if(addr==0x2004){
+            v=ppu.oam[ppu.registers[3]];
+        }
+        else if(addr==0x2007){
+            v=load_ppu_mem(ppu.internal_addr);
             if(ppu.registers[0]&4){
                 ppu.internal_addr+=32;
             }
             else{
                 ppu.internal_addr+=1;
             }
-            return v;
         }
-        else{
-            return ppu.registers[addr-0x2000];
-        }
+        return v;
     }
     else if(addr>=0x4000 && addr<=0x401F){
         return io[addr-0x4000];
@@ -49,7 +51,11 @@ void NES::store_cpu_mem(unsigned short addr,unsigned char value){
     }
     else if(addr>=0x2000 && addr<=0x3FFF){
         addr=(addr&0x7)|0x2000;
-        if(addr==0x2005){
+        if(addr==0x2004){
+            ppu.oam[ppu.registers[3]]=value;
+            ppu.registers[3]+=1;
+        }
+        else if(addr==0x2005){
             if(!ppu.write_toggle){
                 ppu.scroll_x=value;
             }
@@ -61,6 +67,7 @@ void NES::store_cpu_mem(unsigned short addr,unsigned char value){
         else if(addr==0x2006){
             if(!ppu.write_toggle){
                 ppu.internal_addr=(unsigned short)value*256;
+                ppu.registers[0]=(~3&ppu.registers[0])|((value>>2)&3);
             }
             else{
                 ppu.internal_addr+=value;

@@ -35,7 +35,6 @@ class NES{
     unsigned char pin_irq;
     unsigned char pin_nmi;
     unsigned char pin_reset;
-    uint32_t fb[1024][1024];
     uint32_t *pixels;
 public:
     NES(INES ines,uint32_t *pixels);
@@ -45,6 +44,5 @@ public:
     unsigned char load_ppu_mem(unsigned short addr);
     void store_cpu_mem(unsigned short addr,unsigned char value);
     void store_ppu_mem(unsigned short addr,unsigned char value);
-    void render_fb();
-    void copy_fb();
+    void render();
 };

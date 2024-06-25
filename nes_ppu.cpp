@@ -1,5 +1,16 @@
 #include "nes.h"
+uint32_t palette[0x40]={
+    0x626262,0x001FB2,0x2404C8,0x5200B2,0x730076,0x800024,0x730B00,0x522800,
+    0x244400,0x005700,0x005C00,0x005324,0x003C76,0x000000,0x000000,0x000000,
+    0xABABAB,0x0D57FF,0x4B30FF,0x8A13FF,0xBC08D6,0xD21269,0xC72E00,0x9D5400,
+    0x607B00,0x209800,0x00A300,0x009942,0x007DB4,0x000000,0x000000,0x000000,
+    0xFFFFFF,0x53AEFF,0x9085FF,0xD365FF,0xFF57FF,0xFF5DCF,0xFF7757,0xFA9E00,
+    0xBDC700,0x7AE700,0x43F611,0x26EF7E,0x2CD5F6,0x4E4E4E,0x000000,0x000000,
+    0xFFFFFF,0xB6E1FF,0xCED1FF,0xE9C3FF,0xFFBCFF,0xFFBDF4,0xFFC6C3,0xFFD59A,
+    0xE9E681,0xCEF481,0xB6FB9A,0xA9FAC3,0xA9F0F4,0xB8B8B8,0x000000,0x000000
+};
 unsigned char NES::load_ppu_mem(unsigned short addr){
+    addr=addr&0x3FFF;
     if(addr<=0x1FFF){
         if(ines.chr_size>0){
         return ines.chr[addr];
@@ -8,7 +19,7 @@ unsigned char NES::load_ppu_mem(unsigned short addr){
             return ppu.chr_ram[addr];
         }
     }
-    else if(addr>=0x2000 && addr<=0x2FFF){
+    else if(addr>=0x2000 && addr<=0x3EFF){
         //return addr&0xFF;
         unsigned short a=addr&0x3FF;
         if(ines.flag&1){
@@ -20,13 +31,18 @@ unsigned char NES::load_ppu_mem(unsigned short addr){
         return ppu.vram[a];
     }
     else if(addr>=0x3F00){
-        return ppu.palette_ram[addr&0x1F];
+        unsigned short a=addr&0x1F;
+        if(a==0x10||a==0x14||a==0x18||a==0x1C){
+            a-=0x10;
+        }
+        return ppu.palette_ram[a];
     }
     else{
         throw "load: invalid addr";
     }
 }
 void NES::store_ppu_mem(unsigned short addr,unsigned char value){
+    addr=addr&0x3FFF;
     if(ines.chr_size==0&&addr<=0x1FFF){
         ppu.chr_ram[addr]=value;
     }
@@ -41,16 +57,23 @@ void NES::store_ppu_mem(unsigned short addr,unsigned char value){
         ppu.vram[a]=value;;
     }
     else if(addr>=0x3F00){
-        ppu.palette_ram[addr&0x1F]=value;
+        unsigned short a=addr&0x1F;
+        if(a==0x10||a==0x14||a==0x18||a==0x1C){
+            a-=0x10;
+        }
+        if(a==0x01){
+            volatile int x=1;
+        }
+        ppu.palette_ram[a]=value;
     }
     else{
-        throw "load: invalid addr";
+        //throw "load: invalid addr";
     }
 }
 void NES::step_ppu(){
-    if(ppu.counter==341*262-(((ppu.registers[1]>>3)|(ppu.registers[1]>>4))&1)*ppu.odd_even){
-        ppu.counter=0;
+    if(ppu.counter==341*262){
         ppu.odd_even=!ppu.odd_even;
+        ppu.counter=ppu.odd_even;
     }
     if(ppu.counter==341*241+1){
         ppu.registers[2]|=1<<7;
@@ -59,34 +82,52 @@ void NES::step_ppu(){
         }
     }
     if(ppu.counter==341*261+1){
-        ppu.registers[2]=~(1<<7)&ppu.registers[2];
+        ppu.registers[2]=~(3<<6)&ppu.registers[2];
     }
+    render();
     ppu.counter++;
 }
-void NES::render_fb(){
-    for(int k=0;k<4;k++){
-        for(int i=0;i<30;i++){
-            for(int j=0;j<32;j++){
-                unsigned short a=0x2000+k*0x400+i*0x20+j;
-                unsigned char c=load_ppu_mem(a);
-                for(int y=0;y<8;y++){
-                    for(int x=0;x<8;x++){
-                        unsigned char p1=load_ppu_mem(((ppu.registers[0]>>4)&1)*0x1000+c*16+y),p2=load_ppu_mem(((ppu.registers[0]>>4)&1)*0x1000+c*16+y+8);
-                        unsigned char b=(p1>>(7-x)&1)|(((p2>>(7-x)&1))<<1);
-                        unsigned int table[4]={0xFF000000,0xFF0000FF,0xFF00FF00,0xFFFFFFFF};
-                        fb[(k>>1)*240+i*8+y][(k&1)*256+j*8+x]=table[b];
-                    }
-                }
-            }
-        }
+void NES::render(){
+    int d_x=ppu.counter%341,d_y=ppu.counter/341;
+    if(d_x>=256||d_y>=240){
+        return;
     }
-}
-void NES::copy_fb(){
-    int x=ppu.scroll_x|((ppu.registers[0]&1)<<8);
-    int y=ppu.scroll_y|(((ppu.registers[0]>>1)&1)<<8);
-    for(int i=0;i<240;i++){
-        for(int j=0;j<256;j++){
-            pixels[i*256+j]=fb[i+y][j+x];
+    pixels[d_y*256+d_x]=0xFF000000;
+    int x=((ppu.scroll_x|((ppu.registers[0]&1)<<8))+d_x)%512;
+    int y=((ppu.scroll_y|(((ppu.registers[0]>>1)&1)<<8))+d_y)%480;
+    int k=(x/256)|((y/240)<<1);
+    int j=(x-x/256*256)/8,i=(y-y/240*240)/8;
+    int c_x=x%8,c_y=y%8;
+    unsigned char c=load_ppu_mem(0x2000+k*0x400+i*0x20+j);
+    unsigned char p1=load_ppu_mem(((ppu.registers[0]>>4)&1)*0x1000+c*16+c_y),p2=load_ppu_mem(((ppu.registers[0]>>4)&1)*0x1000+c*16+c_y+8);
+    unsigned char b=(p1>>(7-c_x)&1)|(((p2>>(7-c_x)&1))<<1);
+    int pal=(load_ppu_mem(0x23C0+k*0x400+(i/4)*8+j/4)>>(j/2%2*2+i/2%2*4))&3;
+    uint32_t color=0xFF000000|palette[ppu.palette_ram[0]];
+    if(b!=0){
+        color=0xFF000000|palette[ppu.palette_ram[pal*4+b]];
+    };
+    pixels[d_y*256+d_x]=color;
+
+    for(int i=0;i<32;i+=2){
+        if(ppu.oam[i+3]<=d_x&&d_x<ppu.oam[i+3]+8&&ppu.oam[i]+1<=d_y&&d_y<ppu.oam[i]+1+8){
+            unsigned char c_x=d_x-ppu.oam[i+3],c_y=d_y-ppu.oam[i]-1;
+            if(ppu.oam[i+2]&(1<<6)){
+                c_x=7-c_x;
+            }
+            if(ppu.oam[i+2]&(1<<7)){
+                c_y=7-c_y;
+            }
+            unsigned char p1=load_ppu_mem(((ppu.registers[0]>>3)&1)*0x1000+ppu.oam[i+1]*16+c_y),p2=load_ppu_mem(((ppu.registers[0]>>3)&1)*0x1000+ppu.oam[i+1]*16+c_y+8);
+            unsigned char b=(p1>>(7-c_x)&1)|(((p2>>(7-c_x)&1))<<1);
+            if(b!=0){
+                if(!(ppu.oam[i+2]&(1<<5))){
+                    pixels[d_y*256+d_x]=0xFF000000|palette[ppu.palette_ram[((ppu.oam[i+2]&3)+4)*4+b]];
+                }
+                if(i==0){
+                    ppu.registers[2]|=1<<6;
+                }
+                break;
+            }
         }
     }
 }

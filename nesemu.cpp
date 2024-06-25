@@ -18,11 +18,10 @@ int main()
     SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormat(0,256,240,32,pixel_format_enum);
     SDL_PixelFormat *pixel_format=SDL_AllocFormat(pixel_format_enum);
     uint32_t *pixels=(uint32_t*)surface->pixels;
-    INES ines=read_rom("../roms/nes-test-roms/instr_test-v5/build/02-implied.nes");
+    INES ines=read_rom("../roms/smb.nes");
     NES nes(ines,pixels);
     uint64_t cl=0;
     uint64_t ms=SDL_GetTicks64();
-    uint64_t f=0;
     while(true){
         SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
         SDL_RenderClear(renderer);
@@ -39,12 +38,6 @@ int main()
             nes.step_cpu();
         }
         cl+=n_cl;
-        uint64_t n_f=d*60/1000-f;
-        if(n_f>0){
-            nes.render_fb();
-            nes.copy_fb();
-            f+=n_f;
-        }
         SDL_Texture *texture=SDL_CreateTextureFromSurface(renderer, surface);
         SDL_Rect src_rect=(SDL_Rect){0,0,256,240};
         SDL_Rect dest_rect=(SDL_Rect){(640-512)/2,0,512,480};
