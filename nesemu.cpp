@@ -119,6 +119,7 @@ int main(int argc,char **argv)
         SDL_Rect dest_rect=(SDL_Rect){(640-512)/2,0,512,480};
         SDL_RenderCopy(renderer, texture, &src_rect, &dest_rect);
         SDL_RenderPresent(renderer);
+        SDL_DestroyTexture(texture);
     }
     SDL_DestroyWindow(window);
     SDL_Quit();
