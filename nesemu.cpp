@@ -104,6 +104,9 @@ int main(int argc,char **argv)
         nes.controller[7]=keys[SDL_SCANCODE_RIGHT];
         uint64_t d=SDL_GetTicks64()-ms;
         uint64_t n_cl=(uint64_t)(d*(1.789773*1000))-cl;
+        if(n_cl>100000){
+            n_cl=100000;
+        }
         for(int i=0;i<n_cl;i++){
             nes.step_ppu();
             nes.step_ppu();
