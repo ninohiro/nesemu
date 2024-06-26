@@ -1,5 +1,6 @@
 #include "ines.h"
 #include <cstdlib>
+#include <cstdint>
 struct CPU{
     unsigned char ram[2048];
     unsigned char prg_ram[8192];

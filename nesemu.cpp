@@ -8,6 +8,7 @@
 #include <iterator>
 #include "nes.h"
 NES nes{};
+/*
 uint64_t audio_count=0;
 void audio_callback(void *unused, Uint8 *stream, int len){
     char *st=(char*)stream;
@@ -51,6 +52,7 @@ void audio_callback(void *unused, Uint8 *stream, int len){
     }
     audio_count+=len;
 }
+*/
 int main(int argc,char **argv)
 {
     if(argc==1){
@@ -58,6 +60,7 @@ int main(int argc,char **argv)
         return 0;
     }
     SDL_Init(SDL_INIT_EVERYTHING);
+    /*
     SDL_AudioSpec as;
 
     as.freq = 22000;
@@ -68,6 +71,7 @@ int main(int argc,char **argv)
     as.channels = 1;
     SDL_OpenAudio(&as, NULL);
     SDL_PauseAudio(0);
+    */
 
     SDL_Window *window = SDL_CreateWindow("nesemu", 100, 100, 640, 480, SDL_WINDOW_SHOWN);
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, 0);
