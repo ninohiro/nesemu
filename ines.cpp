@@ -6,9 +6,9 @@
 #include "ines.h"
 INES read_rom(const std::string &s){
     INES ines{};
-    std::basic_ifstream<char> ifs(s,std::ios_base::in|std::ios_base::binary);
+    std::ifstream ifs(s,std::ios_base::in|std::ios_base::binary);
     if(!ifs){
-        return ines;
+        throw "file not found.";
     }
     std::istreambuf_iterator<char> it(ifs);
     std::istreambuf_iterator<char> last;

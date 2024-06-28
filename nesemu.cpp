@@ -1,77 +1,18 @@
 #include <SDL2/SDL.h>
 #include<SDL2/SDL_timer.h>
-#include <cstdlib>
 #include <iostream>
-#include <vector>
-#include <string>
-#include <fstream>
-#include <iterator>
+#include <cstdint>
 #include "nes.h"
-NES nes{};
-/*
-uint64_t audio_count=0;
-void audio_callback(void *unused, Uint8 *stream, int len){
-    char *st=(char*)stream;
-    for(int i=0;i<len;i++){
-        st[i]=0;
-    }
-    for(int j=0;j<2;j++){
-        int dc;
-        switch(nes.io[j*4]>>6){
-            case 0:
-                dc=1;
-                break;
-            case 1:
-                dc=2;
-                break;
-            case 2:
-                dc=4;
-                break;
-            case 3:
-                dc=6;
-                break;
-        }
-        double vol=(double)(nes.io[j*4]&0xF)/16;
-        double freq=111860.8/((int)nes.io[j*4+2]+(int)(nes.io[j*4+3]&7)*256+1);
-        for(int i=0;i<len;i++){
-            double t=double(i+audio_count)/22000;
-            double x=vol*((t*freq-(int)(t*freq))*8<=dc?1:-1);
-            st[i]+=(char)(x*127/4);
-        }
-    }
-    if(nes.io[8]&(1<<6)){
-        double vol=1;
-        double freq=55930.4/((int)nes.io[0xA]+(int)(nes.io[0xB]&7)*256+1);
-        for(int i=0;i<len;i++){
-            double t=double(i+audio_count)/22000;
-            int n=(t*freq-(int)(t*freq))*4;
-            double f=t*freq*4-(int)(t*freq*4);
-            double x=vol*((n&1)+(n&1?-1:1)*f)*(n&2?-1:1);
-            st[i]+=(char)(x*127/4);
-        }
-    }
-    audio_count+=len;
-}
-*/
-int main(int argc,char **argv)
+
+using namespace std;
+
+int main(int argc,char *argv[])
 {
     if(argc==1){
-        printf("Usage: nesemu <file>\n");
-        return 0;
+        cerr<<"Usage: nesemu <file>"<<endl;
+        return 1;
     }
     SDL_Init(SDL_INIT_EVERYTHING);
-    /*
-    SDL_AudioSpec as;
-
-    as.freq = 22000;
-    as.format = AUDIO_S8;
-    as.samples = 1024;
-    as.callback=audio_callback;
-    as.userdata=NULL;
-    as.channels = 1;
-    SDL_OpenAudio(&as, NULL);
-    SDL_PauseAudio(0);
-    */
 
     SDL_Window *window = SDL_CreateWindow("nesemu", 100, 100, 640, 480, SDL_WINDOW_SHOWN);
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, 0);
@@ -80,6 +21,8 @@ int main(int argc,char **argv)
     SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormat(0,256,240,32,pixel_format_enum);
     SDL_PixelFormat *pixel_format=SDL_AllocFormat(pixel_format_enum);
     uint32_t *pixels=(uint32_t*)surface->pixels;
+
+    NES nes{};
     INES ines=read_rom(argv[1]);
     nes.ines=ines;
     nes.pixels=pixels;

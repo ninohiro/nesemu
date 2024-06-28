@@ -12,30 +12,18 @@ uint32_t palette[0x40]={
 unsigned char NES::load_ppu_mem(unsigned short addr){
     addr=addr&0x3FFF;
     if(addr<=0x1FFF){
-        if(ines.chr_size>0){
-        return ines.chr[addr];
-        }
-        else{
-            return ppu.chr_ram[addr];
-        }
+        return (ines.chr_size>0)?ines.chr[addr]:ines.chr_ram[addr];
     }
     else if(addr>=0x2000 && addr<=0x2FFF){
-        //return addr&0xFF;
-        unsigned short a=addr&0x3FF;
-        if(ines.flag&1){
-            a|=addr&(1<<10);
-        }
-        else{
-            a|=(addr&(1<<11))>>1;
-        }
-        return ppu.vram[a];
+        addr=0x3FF&addr|((ines.flag&1)?(addr&(1<<10)):(addr&(1<<11))>>1);
+        return ppu.vram[addr];
     }
     else if(addr>=0x3F00){
-        unsigned short a=addr&0x1F;
-        if(a==0x10||a==0x14||a==0x18||a==0x1C){
-            a-=0x10;
+        addr&=0x1F;
+        if(addr==0x10||addr==0x14||addr==0x18||addr==0x1C){
+            addr-=0x10;
         }
-        return ppu.palette_ram[a];
+        return ppu.palette_ram[addr];
     }
     else{
         throw "load: invalid addr";
@@ -44,24 +32,18 @@ unsigned char NES::load_ppu_mem(unsigned short addr){
 void NES::store_ppu_mem(unsigned short addr,unsigned char value){
     addr=addr&0x3FFF;
     if(ines.chr_size==0&&addr<=0x1FFF){
-        ppu.chr_ram[addr]=value;
+        ines.chr_ram[addr]=value;
     }
     else if(addr>=0x2000 && addr<=0x2FFF){
-        unsigned short a=addr&0x3FF;
-        if(ines.flag&1){
-            a|=addr&(1<<10);
-        }
-        else{
-            a|=(addr&(1<<11))>>1;
-        }
-        ppu.vram[a]=value;;
+        addr=0x3FF&addr|((ines.flag&1)?addr&(1<<10):(addr&(1<<11))>>1);
+        ppu.vram[addr]=value;;
     }
     else if(addr>=0x3F00){
-        unsigned short a=addr&0x1F;
-        if(a==0x10||a==0x14||a==0x18||a==0x1C){
-            a-=0x10;
+        addr&=0x1F;
+        if(addr==0x10||addr==0x14||addr==0x18||addr==0x1C){
+            addr-=0x10;
         }
-        ppu.palette_ram[a]=value;
+        ppu.palette_ram[addr]=value;
     }
     else{
         throw "store: invalid addr";
@@ -86,6 +68,11 @@ void NES::step_ppu(){
     }
     ppu.counter++;
 }
+int NES::load_chr(int bank,int n,int c_x,int c_y){
+    unsigned char p1=load_ppu_mem(bank*0x1000+n*16+c_y),p2=load_ppu_mem(bank*0x1000+n*16+c_y+8);
+    int b=(p1>>(7-c_x)&1)|(((p2>>(7-c_x)&1))<<1);
+    return b;
+}
 void NES::render(){
     int d_x=ppu.counter%341,d_y=ppu.counter/341;
     if(d_x>=256||d_y>=240){
@@ -97,15 +84,12 @@ void NES::render(){
     int k=(x/256)|((y/240)<<1);
     int j=(x-x/256*256)/8,i=(y-y/240*240)/8;
     int c_x=x%8,c_y=y%8;
-    unsigned char c=load_ppu_mem(0x2000+k*0x400+i*0x20+j);
-    unsigned char p1=load_ppu_mem(((ppu.registers[0]>>4)&1)*0x1000+c*16+c_y),p2=load_ppu_mem(((ppu.registers[0]>>4)&1)*0x1000+c*16+c_y+8);
-    unsigned char b=(p1>>(7-c_x)&1)|(((p2>>(7-c_x)&1))<<1);
+    int bg_b=load_chr((ppu.registers[0]>>4)&1,load_ppu_mem(0x2000+k*0x400+i*0x20+j),x%8,y%8);
     int pal=(load_ppu_mem(0x23C0+k*0x400+(i/4)*8+j/4)>>(j/2%2*2+i/2%2*4))&3;
     uint32_t color=0xFF000000|palette[ppu.palette_ram[0]];
-    if(b!=0){
-        color=0xFF000000|palette[ppu.palette_ram[pal*4+b]];
+    if(bg_b!=0){
+        color=0xFF000000|palette[ppu.palette_ram[pal*4+bg_b]];
     };
-    unsigned char bg_b=b;
     pixels[d_y*256+d_x]=color;
 
     if(d_y>0&&ppu.oam_list_size[(d_y-1)/8][d_x/8]>0){
@@ -119,8 +103,7 @@ void NES::render(){
                 if(ppu.oam[i+2]&(1<<7)){
                     c_y=7-c_y;
                 }
-                unsigned char p1=load_ppu_mem(((ppu.registers[0]>>3)&1)*0x1000+ppu.oam[i+1]*16+c_y),p2=load_ppu_mem(((ppu.registers[0]>>3)&1)*0x1000+ppu.oam[i+1]*16+c_y+8);
-                unsigned char b=(p1>>(7-c_x)&1)|(((p2>>(7-c_x)&1))<<1);
+                int b=load_chr((ppu.registers[0]>>3)&1,ppu.oam[i+1],c_x,c_y);
                 if(b!=0){
                     if(bg_b==0||!(ppu.oam[i+2]&(1<<5))){
                         pixels[d_y*256+d_x]=0xFF000000|palette[ppu.palette_ram[((ppu.oam[i+2]&3)+4)*4+b]];

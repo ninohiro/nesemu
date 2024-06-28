@@ -6,6 +6,8 @@ struct INES{
     unsigned char chr_size;
     std::vector<unsigned char> prg;
     std::vector<unsigned char> chr;
+    unsigned char prg_ram[8192];
+    unsigned char chr_ram[2048];
     unsigned char flag;
 };
 INES read_rom(const std::string &s);
