@@ -46,7 +46,7 @@ void NES::store_ppu_mem(unsigned short addr,unsigned char value){
         ppu.palette_ram[addr]=value;
     }
     else{
-        throw "store: invalid addr";
+        //throw "store: invalid addr";
     }
 }
 void NES::step_ppu(){

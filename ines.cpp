@@ -1,26 +1,16 @@
-#include <cstdlib>
-#include <vector>
-#include <string>
 #include <fstream>
-#include <iterator>
 #include "ines.h"
-INES read_rom(const std::string &s){
+INES read_rom(const char *s){
     INES ines{};
     std::ifstream ifs(s,std::ios_base::in|std::ios_base::binary);
     if(!ifs){
         throw "file not found.";
     }
-    std::istreambuf_iterator<char> it(ifs);
-    std::istreambuf_iterator<char> last;
-    std::vector<char> rom(it, last);
-    ines.prg_size=rom[4];
-    ines.chr_size=rom[5];
-    ines.flag=rom[6];
-    ines.prg.resize(ines.prg_size*16384);
-    ines.chr.resize(ines.chr_size*8192);
-    int n=16;
-    std::copy(rom.begin()+n,rom.begin()+n+ines.prg_size*16384,ines.prg.begin());
-    n+=ines.prg_size*16384;
-    std::copy(rom.begin()+n,rom.begin()+n+ines.chr_size*8192,ines.chr.begin());
+    ifs.read((char*)ines.header,16);
+    ines.prg_size=ines.header[4];
+    ines.chr_size=ines.header[5];
+    ines.flag=ines.header[6];
+    ifs.read((char*)ines.prg,16384*ines.prg_size);
+    ifs.read((char*)ines.chr,8192*ines.chr_size);
     return ines;
 }
